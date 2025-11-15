@@ -1,0 +1,12 @@
+UNIQUE FRAME CAPTIONS:
+- Frame 1 @ 0.90s: a tree in the middle of a grassy area
+- Frame 2 @ 1.82s: a tree in the middle of a green field
+- Frame 3 @ 2.72s: a tree in the middle of a forest
+- Frame 4 @ 4.53s: a small tree in the middle of a green field
+- Frame 5 @ 5.45s: a small tree in a forest with a small hole
+- Frame 6 @ 6.35s: a tree in the middle of a forest
+- Frame 7 @ 8.17s: a tree in the forest with a cave
+- Frame 8 @ 9.08s: a small cave in the middle of a forest
+
+FINAL VIDEO CAPTION (Summarized):
+A tree in the middle of a grassy area with a small hole is a tree in a forest . A small cave in the forest with a cave is a.
