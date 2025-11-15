@@ -7,3 +7,4 @@ __pycache__/
 *.pyd
 .vscode/
 test_install.py
+samples/video2.mp4
