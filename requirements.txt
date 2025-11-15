@@ -2,3 +2,4 @@ torch
 transformers
 opencv-python
 pillow
+sentencepiece
