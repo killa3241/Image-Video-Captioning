@@ -2,11 +2,11 @@ import argparse
 import os
 import cv2
 import torch
+import math 
 from PIL import Image
 from transformers import (
     BlipProcessor, 
     BlipForConditionalGeneration, 
-    # NEW imports for summarization
     AutoTokenizer, 
     AutoModelForSeq2SeqLM
 )
@@ -27,16 +27,13 @@ blip_processor = BlipProcessor.from_pretrained(BLIP_MODEL_PATH, local_files_only
 blip_model = BlipForConditionalGeneration.from_pretrained(BLIP_MODEL_PATH, local_files_only=True)
 
 # 2. Text Summarization Model (DistilBART)
-# NOTE: Replace "./distilbart-summarizer" with the path where you downloaded the 5 model files.
 SUM_MODEL_PATH = "./distilbart-summarizer" 
-SUM_MODEL_NAME = "sshleifer/distilbart-cnn-12-6" # Used as fallback if running online, but path is preferred
+SUM_MODEL_NAME = "sshleifer/distilbart-cnn-12-6" 
 
 try:
-    # Attempt to load locally first
     sum_tokenizer = AutoTokenizer.from_pretrained(SUM_MODEL_PATH, local_files_only=True)
     sum_model = AutoModelForSeq2SeqLM.from_pretrained(SUM_MODEL_PATH, local_files_only=True)
 except Exception:
-    # Fallback to online loading if local path fails (for testing purposes, ideally run entirely locally)
     print(f"⚠ Could not load summarization model locally from {SUM_MODEL_PATH}. Attempting online download.")
     sum_tokenizer = AutoTokenizer.from_pretrained(SUM_MODEL_NAME)
     sum_model = AutoModelForSeq2SeqLM.from_pretrained(SUM_MODEL_NAME)
@@ -55,7 +52,6 @@ def generate_caption_for_frame(frame_image: Image.Image) -> str:
     inputs = blip_processor(frame_image, return_tensors="pt").to(device)
 
     with torch.no_grad():
-        # Using blip_model and blip_processor
         output_ids = blip_model.generate(**inputs, max_length=50)
 
     caption = blip_processor.decode(output_ids[0], skip_special_tokens=True)
@@ -83,9 +79,9 @@ def generate_summary(caption_list: list) -> str:
     with torch.no_grad():
         summary_ids = sum_model.generate(
             inputs['input_ids'], 
-            num_beams=3,             # Reduced from 4
-            max_length=35,           # Reduced from 60
-            min_length=10,           # Adjusted lower bound
+            num_beams=3, 
+            max_length=35, 
+            min_length=10, 
             early_stopping=True
         )
     # -------------------------------
@@ -102,9 +98,13 @@ def generate_summary(caption_list: list) -> str:
 
 
 # ---------------------------------------------
-#  PROCESS FULL VIDEO
+#  PROCESS FULL VIDEO (UPDATED LOGIC)
 # ---------------------------------------------
-def caption_video(video_path: str, num_frames: int = 10):
+# Define the maximum acceptable time interval (in seconds) between sampled frames
+MAX_INTERVAL_SECONDS = 60 
+
+# Removed 'num_frames=10' from the function signature. The default is handled by ARGPARSE if no argument is passed.
+def caption_video(video_path: str, num_frames: int): 
     if not os.path.exists(video_path):
         print(f"❌ Error: Video not found at '{video_path}'")
         return
@@ -119,23 +119,45 @@ def caption_video(video_path: str, num_frames: int = 10):
 
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     fps = cap.get(cv2.CAP_PROP_FPS)
+    total_duration_s = total_frames / (fps if fps else 1)
+    
+    print(f"Total frames: {total_frames}, FPS: {fps}, Duration: {total_duration_s:.2f}s")
 
-    print(f"Total frames: {total_frames}, FPS: {fps}")
+    # --- DYNAMIC FRAME CALCULATION LOGIC ---
+    default_num_frames = 3 # Use a sensible minimum default if dynamic calculation isn't relevant
 
-    # Determine which frames to capture (10 evenly spaced frames logic)
-    if total_frames < num_frames:
+    if total_duration_s > 0:
+        # Calculate the minimum number of frames needed to ensure the interval is <= MAX_INTERVAL_SECONDS
+        required_segments = total_duration_s / MAX_INTERVAL_SECONDS
+        
+        # We need N frames, so N = (Total Duration / MAX_INTERVAL_SECONDS) - 1
+        min_required_frames = max(default_num_frames, math.ceil(required_segments) - 1)
+        
+        # If the user provided a number (num_frames), respect it only if it's greater than the required minimum.
+        # Otherwise, use the dynamically calculated minimum.
+        num_frames_to_extract = max(num_frames if num_frames is not None else default_num_frames, min_required_frames)
+        
+        if num_frames_to_extract > (num_frames if num_frames is not None else default_num_frames):
+             print(f"ℹ️ Video is long. Dynamically setting sampled frames to {num_frames_to_extract} (Max {MAX_INTERVAL_SECONDS}s interval).")
+    else:
+         num_frames_to_extract = num_frames if num_frames is not None else default_num_frames
+
+
+    # Determine which frames to capture 
+    if total_frames <= num_frames_to_extract:
         actual_num_frames = total_frames
-        print(f"⚠ Video too short. Capturing all {actual_num_frames} frames.")
+        print(f"⚠ Video too short or sampling maximum. Capturing all {actual_num_frames} frames.")
         frames_to_extract = list(range(0, total_frames))
     else:
-        interval = total_frames / (num_frames + 1)
-        frames_to_extract = [int(i * interval) for i in range(1, num_frames + 1)]
-        actual_num_frames = num_frames
+        # Calculate interval based on the chosen num_frames_to_extract
+        interval = total_frames / (num_frames_to_extract + 1)
+        frames_to_extract = [int(i * interval) for i in range(1, num_frames_to_extract + 1)]
+        actual_num_frames = num_frames_to_extract
 
     print(f"Frames to check: {frames_to_extract}")
 
     frame_captions = []
-    raw_captions_for_summary = [] # NEW: List to hold only the text of unique captions for the summarizer
+    raw_captions_for_summary = [] 
     last_caption = "" 
     unique_frame_count = 0 
 
@@ -164,7 +186,6 @@ def caption_video(video_path: str, num_frames: int = 10):
             frame_entry = f"Frame {unique_frame_count} @ {timestamp:.2f}s: {current_caption}"
             frame_captions.append(frame_entry)
             
-            # Prepare sentence for summarizer: capitalize and add a period
             raw_captions_for_summary.append(current_caption.capitalize() + ".") 
             
             print(f"✅ Unique Caption Found: {current_caption} (Frame {frame_no})")
@@ -178,7 +199,6 @@ def caption_video(video_path: str, num_frames: int = 10):
     # ---------------------------------------------
     # Summary Generation (NEW)
     # ---------------------------------------------
-    # Use the Summarization model on the unique, raw captions
     final_summary = generate_summary(raw_captions_for_summary)
 
 
@@ -215,7 +235,9 @@ def caption_video(video_path: str, num_frames: int = 10):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Offline Video Captioning using Local BLIP model and DistilBART summarization.")
     parser.add_argument("video_path", type=str, help="Path to the video file")
-    parser.add_argument("--num_frames", type=int, default=10, help="Number of frames to extract (default is 10)")
+    # Set default to None to indicate the value is dynamically calculated.
+    # The minimum is set to 3 for compliance, but the dynamic calculation takes precedence.
+    parser.add_argument("--num_frames", type=int, default=None, help=f"Number of frames to extract. Defaults dynamically based on video length (Max {MAX_INTERVAL_SECONDS}s interval).") 
 
     args = parser.parse_args()
     caption_video(args.video_path, args.num_frames)

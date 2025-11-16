@@ -1,13 +1,13 @@
 UNIQUE FRAME CAPTIONS:
-- Frame 1 @ 53.95s: a man in a suit is standing next to a helicopter
-- Frame 2 @ 107.94s: a man driving a car with a steering
-- Frame 3 @ 215.92s: a car is driving down the road in the desert
-- Frame 4 @ 269.90s: a man driving a car on a road
-- Frame 5 @ 323.86s: a man is sitting in the back seat of a car
-- Frame 6 @ 377.84s: a man driving a car on a road
-- Frame 7 @ 431.83s: a man in a car with a helmet on
-- Frame 8 @ 485.82s: a man filling gas into a car
-- Frame 9 @ 539.81s: a man is standing next to a black mustang
+- Frame 1 @ 59.36s: a car is seen in a parking lot
+- Frame 2 @ 118.75s: a man driving a car with a dog in the passenger seat
+- Frame 3 @ 178.11s: a car driving down a road with a hill in the background
+- Frame 4 @ 237.50s: a white door
+- Frame 5 @ 296.90s: a car is parked in a parking lot
+- Frame 6 @ 356.26s: a man driving a car with a dog in the passenger seat
+- Frame 7 @ 415.65s: a car parked in a parking lot with a fence
+- Frame 8 @ 475.01s: a man in a car is driving through the dark
+- Frame 9 @ 534.40s: a man in a black shirt is standing next to a blue mustang
 
 FINAL VIDEO CAPTION (Summarized):
-A man in a suit is standing next to a helicopter . A car is driving down the road in the desert . A man is sitting in the back seat of.
+A man driving a car with a dog in the passenger seat . A car is seen in a parking lot . A man in a car is driving through the dark.
